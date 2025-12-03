@@ -1,0 +1,63 @@
+# ==== OS / Editor ====
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# JetBrains（PyCharm, IntelliJ など）
+.idea/
+
+# ==== Python ====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+*.mypy_cache/
+*.ruff_cache/
+
+# Virtual environment
+venv/
+.env/
+.env.local
+.venv/
+*.env
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ==== Node.js / Web ====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+
+# ==== Logs ====
+logs/
+*.log
+
+# ==== Environment / Secrets ====
+*.env
+*.secret
+*.key
+*.pem
+
+# ==== Data ====
+data/
+data/*
+
+# ==== Optional: ML/Analysis ====
+# model artifacts
+models/
+checkpoints/
+outputs/
+
+# temporary
+tmp/
+temp/
