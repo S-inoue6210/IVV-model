@@ -3,7 +3,7 @@ Gu, Qihang, et al. "Inferring venue visits from GPS trajectories." Proceedings o
 
 ## 実装詳細
 
-本リポジトリでは、GPS軌跡データから来訪施設を推定するIVV (Inverse Visit Verification) モデルを実装しています。
+本リポジトリでは、GPS軌跡データから来訪施設を推定するIVV (Inferring Venue Visits) モデルを実装しています。
 
 ### 1. データ準備 (`src/preprocessing.py`)
 
