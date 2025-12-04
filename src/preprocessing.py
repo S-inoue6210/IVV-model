@@ -14,36 +14,34 @@ def calculate_rank(df):
     Calculate rank of the candidate venue within each stay_id based on distance.
     Rank 0 is the closest venue.
     """
-    # Ensure data is sorted by distance just in case, though rank method handles it
     df['rank'] = df.groupby('stay_id')['distance_from_poi'].rank(method='first', ascending=True) - 1
     df['rank'] = df['rank'].astype(int)
     return df
 
-def discretize_features(df, num_buckets=40, max_dist=500):
+def filter_valid_stays(df):
     """
-    Discretize distance and rank into buckets.
+    Keep only stays where exactly one candidate is labeled 1.
     """
-    # Discretize Distance
-    # 0 to max_dist divided into num_buckets
-    # Bucket index = floor(distance / (max_dist / num_buckets))
-    # Clip to max bucket index
-    
+    label_sum = df.groupby('stay_id')['label'].sum()
+    valid_stays = label_sum[label_sum == 1].index
+    return df[df['stay_id'].isin(valid_stays)].copy()
+
+def discretize_features(df, num_buckets=40):
+    """
+    Discretize distance and rank into buckets using *data-driven max distance*.
+    """
+    max_dist = df['distance_from_poi'].max()
+
+    if max_dist == 0:
+        max_dist = 1e-6
+
     dist_bin_width = max_dist / num_buckets
+
     df['distance_bucket'] = np.floor(df['distance_from_poi'] / dist_bin_width).astype(int)
     df['distance_bucket'] = df['distance_bucket'].clip(0, num_buckets - 1)
-    
-    # Discretize Rank
-    # Rank is already an integer. We just clip it to num_buckets - 1
-    # Assuming we want one bucket per rank up to a limit?
-    # Requirement says: "Rank (0 up to max rank) must be discretized into 40 evenly spaced values (buckets)."
-    # If max rank is small, it maps 1-to-1. If large, we might need binning.
-    # Usually for rank, we just cap it at 39 (if 0-indexed) or similar.
-    # Let's assume simple clipping for now as rank is discrete.
-    # Or if we strictly follow "evenly spaced", we might need to know max rank.
-    # Given the context, usually top ranks are most important. Let's clip.
-    
+
     df['rank_bucket'] = df['rank'].clip(0, num_buckets - 1)
-    
+
     return df
 
 def train_test_split_by_stay(df, test_ratio=0.2, random_state=42):

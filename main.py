@@ -1,15 +1,13 @@
 import pandas as pd
 import numpy as np
 
-from src.preprocessing import load_data, calculate_rank, discretize_features, train_test_split_by_stay
+from src.preprocessing import load_data, calculate_rank, filter_valid_stays, discretize_features, train_test_split_by_stay
 from src.model import IVVModel
 from src.evaluation import calculate_ndcg, calculate_map
 
 def main():
     # 1. Load Data
     print("Loading data...")
-    # Assuming the file is at data/data_01.csv
-    # Note: The user's file might be large, but we'll assume it fits in memory for now.
     filepath = "data/data_01.csv"
     try:
         df = load_data(filepath)
@@ -21,11 +19,14 @@ def main():
 
     # 2. Preprocessing
     print("Preprocessing...")
-    # Check if 'rank' exists, if not calculate it
     if 'rank' not in df.columns:
         print("Calculating rank...")
         df = calculate_rank(df)
     
+    print("Filtering valid stays...")
+    df = filter_valid_stays(df)
+    print(f"Valid stays: {len(df)} rows.")
+
     print("Discretizing features...")
     df = discretize_features(df)
     
