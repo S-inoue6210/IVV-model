@@ -36,7 +36,9 @@ Gu, Qihang, et al. "Inferring venue visits from GPS trajectories." Proceedings o
 モデルの性能は以下の指標で評価する。
 
 *   **NDCG@k** (Normalized Discounted Cumulative Gain): 上位k件のランキング精度 (k=1, 5, 10)
-*   **MAP** (Mean Average Precision): 正解施設の順位に基づく平均適合率
+*   **Confidence Margin**: 各`stay_id`に対して、正解POIと2位POIの訪問確率の差の分布（正解データ vs 不正解データ）
+*   **Entropy**: 各`stay_id`に対する訪問先候補POIの確率分布の分散度合い
+
 
 ## 実行方法
 

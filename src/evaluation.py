@@ -147,3 +147,43 @@ def calculate_entropy(df):
     mean_entropy = entropy_df['entropy'].mean()
 
     return entropy_df, mean_entropy
+
+def extract_mismatch_predictions(df):
+    """
+    For each stay_id, compare:
+      - POI with maximum predicted probability (proba)
+      - POI with label == 1 (ground truth)
+
+    Return rows where they do NOT match.
+
+    Output columns:
+      stay_id,
+      predicted_poi_name,
+      true_poi_name,
+      predicted_proba,
+      true_proba
+    """
+    records = []
+
+    for stay_id, group in df.groupby('stay_id'):
+        # --- predicted (Top-1) ---
+        pred_row = group.loc[group['proba'].idxmax()]
+
+        # --- ground truth ---
+        true_rows = group[group['label'] == 1]
+        if len(true_rows) != 1:
+            # skip invalid stays (should not happen if data is clean)
+            continue
+        true_row = true_rows.iloc[0]
+
+        # --- compare ---
+        if pred_row['poi_name'] != true_row['poi_name']:
+            records.append({
+                'stay_id': stay_id,
+                'predicted_poi_name': pred_row['poi_name'],
+                'true_poi_name': true_row['poi_name'],
+                'predicted_proba': pred_row['proba'],
+            'true_proba': true_row['proba'],
+        })
+
+    return pd.DataFrame(records)
