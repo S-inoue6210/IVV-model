@@ -1,49 +1,69 @@
-# IVV-model
-Gu, Qihang, et al. "Inferring venue visits from GPS trajectories." Proceedings of the 25th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems. 2017.
+# IVV-model Repository
 
-## 実装詳細
+このリポジトリは、IVV (In-Venue Visit) モデルの実装を含んでいます。
+主に、滞在データ（stay）とPOI候補（candidate）の距離やランクなどの特徴量を用いて、真の来訪POIを推定するモデルです。
 
-本リポジトリでは、GPS軌跡データから来訪施設を推定するIVV (Inferring Venue Visits) モデルを実装している。
+## 構成
 
-### 1. データ準備 (`src/preprocessing.py`)
+- `src/`: ソースコード（前処理、モデル定義、評価関数など）
+- `notebook01.ipynb`: 基本モデル（距離とランクを使用）の実行例
+- `notebook02_general.ipynb`: 汎用モデル（任意の特徴量をバケット化して使用）の実行例
+- `data/`: データセット用ディレクトリ
+- `outputs/`: 出力結果用ディレクトリ
 
-入力データは、滞在点（stay_log_point）と候補POI（poi_point）が紐付けられた状態を想定している。
+## ソースコード (`src/`) の解説
 
-**必須column**: {stay_id, distance_from_poi, label}
+`src` ディレクトリには、モデルの実装やデータ処理のための Python モジュールが含まれています。
 
-*   **ファイルの読み込み**: CSVファイルをpd.dataframeとして読み込む。
-*   **ランク計算**: 各滞在点において、候補POIを距離順にランク付けする（最も近いPOIがランク0）
-*   **有効滞在点の選択**: 各`stay_id` について `label` の値を合計し、1の場合（1つの滞在点に対して1つの候補POIが与えられている）を有効滞在点とする。
-*   **特徴量の離散化**: 距離（Distance）とランク（Rank）をそれぞれ40個のバケットに離散化する。
-    *   距離: 0~最大距離を40等分
-    *   ランク: 0〜39にクリッピング（39よりも大きな値を39にする）
-*   **データ分割**: `stay_id` 単位で学習用（80%）と評価用（20%）に分割する。
+### 1. `preprocessing.py`
+基本モデル用の前処理関数群です。
+- **`load_data`**: CSVファイルからデータを読み込みます。
+- **`calculate_rank`**: 各滞在（`stay_id`）内での候補POIの距離ランクを計算します。
+- **`filter_valid_stays`**: 正解ラベル（`label=1`）が1つだけ存在する有効な滞在データのみを抽出します。
+- **`discretize_features`**: 距離（`distance_from_poi`）とランク（`rank`）をバケット化（離散化）します。
+- **`train_test_split_by_stay`**: `stay_id` 単位で学習データとテストデータに分割します。
 
-### 2. モデル定義 (`src/model.py`)
+### 2. `model.py`
+基本モデル（IVVModel）の実装です。距離とランクの2つの特徴量に特化しています。
+- **`IVVModel` クラス**:
+    - `__init__`: バケット数を受け取り、パラメータ（`phi_dist`, `phi_rank`）を初期化します。
+    - `score`: 各候補のスコアを計算します（各特徴量の重みの積）。
+    - `predict_proba`: スコアを滞在ごとに正規化し、来訪確率を算出します。
+    - `log_likelihood`: データの対数尤度を計算します。
+    - `train`: 勾配上昇法（Gradient Ascent）を用いてモデルのパラメータを学習します。
 
-離散選択モデル（Discrete Choice Model）に基づき、以下のスコアリング関数を学習する。
+### 3. `evaluation.py`
+モデルの評価を行うための関数群です。
+- **`calculate_ndcg`**: NDCG@k を計算し、ランキングの精度を評価します。
+- **`plot_confidence_margin`**: Confidence Margin（1位と2位の確率差）の分布をヒストグラムで可視化します。正解/不正解ごとの分布を確認できます。
+- **`calculate_entropy`**: 予測確率分布のエントロピーを計算し、モデルの予測の不確実性を評価します。
+- **`extract_mismatch_predictions`**: 予測と正解が一致しなかった事例を抽出します。
 
-*   **スコア関数**: $s(v,m) = \Phi(D) \cdot \Phi(R)$
-    *   $\Phi(D)$: 距離バケットに対する重み
-    *   $\Phi(R)$: ランクバケットに対する重み
-*   **目的関数**: 対数尤度（Log Likelihood）の最大化
-    *   $LL = \sum_C \log s(v(m),m) - \sum_C \log \left( \sum_{v' \in V_m} s(v',m) \right)$
-*   **最適化手法**: 勾配上昇法（Gradient Ascent）
-    *   パラメータの更新には乗法的な更新則（Multiplicative Update）を使用している。
+### 4. `preprocessing_general.py`
+汎用モデル用の前処理関数群です。
+- **`discretize_features`**: ユーザーが指定した特徴量リスト（`discretize_feature`）に基づいて、任意の特徴量をバケット化します。
+- その他、`load_data`, `filter_valid_stays`, `train_test_split_by_stay` は基本版と同様の機能を提供します。
 
-### 3. 評価指標 (`src/evaluation.py`)
+### 5. `model_general.py`
+汎用モデル（IVVModel）の実装です。任意個の特徴量に対応しています。
+- **`IVVModel` クラス**:
+    - 初期化時に特徴量の設定（名前とバケット数）のリストを受け取ります。
+    - 各特徴量に対してパラメータ（`phi`）を保持し、それらの積でスコアを計算します。
+    - 学習ロジックは基本モデルと同様に、勾配上昇法を用いて各特徴量のパラメータを更新します。
 
-モデルの性能は以下の指標で評価する。
+## ノートブックの解説
 
-*   **NDCG@k** (Normalized Discounted Cumulative Gain): 上位k件のランキング精度 (k=1, 5, 10)
-*   **Confidence Margin**: 各`stay_id`に対して、正解POIと2位POIの訪問確率の差の分布（正解データ vs 不正解データ）
-*   **Entropy**: 各`stay_id`に対する訪問先候補POIの確率分布の分散度合い
+### `notebook01.ipynb`
+基本モデルのワークフローを示すノートブックです。
+1. **データの読み込み**: `data/data_01.csv` などを読み込みます。
+2. **前処理**: ランク計算、有効データフィルタリング、特徴量（距離・ランク）の離散化、Train/Test分割を行います。
+3. **モデル学習**: `src.model.IVVModel` を使用して学習を行い、対数尤度の推移を表示します。
+4. **評価**: NDCGの計算、Confidence Marginのプロット、エントロピーの計算を行い、Train/Testセットでの性能を確認します。
+5. **結果の保存**: 予測結果（確率付与済み）をCSVとして保存します。
 
-
-## 実行方法
-
-```bash
-python main.py
-```
-
-実行すると、データの読み込み、前処理、モデルの学習、およびテストデータでの評価が行われる。
+### `notebook02_general.ipynb`
+汎用モデルのワークフローを示すノートブックです。
+1. **設定**: 使用する特徴量とバケット数を辞書リストで定義します（例：`distance_from_poi_bucket`）。
+2. **前処理**: `src.preprocessing_general` を使用して、指定された特徴量の離散化などを行います。
+3. **モデル学習**: `src.model_general.IVVModel` を初期化・学習します。特徴量定義を渡すことで、柔軟にモデルを構築できます。
+4. **評価・保存**: 基本モデルと同様に評価指標の計算と結果の保存を行います。
