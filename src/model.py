@@ -91,4 +91,4 @@ class IVVModel:
                 ll = self.log_likelihood(df)
                 print(f"Iteration {it}: LL = {ll:.4f}")
                 
-        return self
+        return self.phi_dist.copy(), self.phi_rank.copy()
